@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "package": "swift-ai-ui",
+  "version": "1.0.0",
+  "releaseID": "modular-3",
+  "source": {
+    "commit": "7fc9b4cd72f8f83b75ba7eee2e38d37127539317",
+    "baseCommit": "7fc9b4cd72f8f83b75ba7eee2e38d37127539317",
+    "workingTree": false,
+    "inputsSHA256": "49b802ba4a30454f78c9886ab3114537ef659ab3e6db7775479b7351f6e3f0ab"
+  },
+  "dependencies": [
+    {
+      "package": "swift-ai-core",
+      "from": "1.0.0"
+    }
+  ],
+  "changes": [
+    {
+      "id": "remaining-package-extraction",
+      "notes": "Extract the existing runtime, typed settings and standalone tests from the compatibility aggregate. Preserve the reviewed npm baseline and existing capability/gap boundaries.",
+      "compatibility": "Initial independent Swift package version. Existing SwiftAISDK entry points remain in the development compatibility facade; no npm-version equivalence is implied."
+    }
+  ],
+  "canonicalDirectory": "Packages/swift-ai-ui",
+  "upstream": [
+    {
+      "name": "ai",
+      "reviewedVersion": "7.0.153",
+      "ledgerKind": "core",
+      "evidence": "Docs/CoreV6Parity.md",
+      "reviewStatus": "imported-reviewed-with-gaps",
+      "archiveIntegrity": "sha512-Ib8v374jWn9FXsjADXodRaP7fsMutlmPsbTLT5gYBDyadFcF9XxfYX1CSSxgSvE1r06MmOeYVwvQjFb3CcBi1Q==",
+      "sourceRef": "npm:ai@7.0.153",
+      "testRef": "682e2dd71456f14f9da33a1b983d1998c3a1184c",
+      "testRefRelationship": "inventory-snapshot-not-release-verified",
+      "contractFamilies": [
+        "ProviderV4 orchestration"
+      ],
+      "contractReview": "M5 pinned published declarations reviewed; native Swift protocols and typed factories are the compatibility contract. Retain existing behavior and documented gaps. npm gitHead absent; test snapshot is not matching-release evidence. See Docs/Migration/M5/upstream-review.json."
+    },
+    {
+      "name": "@ai-sdk/react",
+      "reviewedVersion": "4.0.157",
+      "ledgerKind": "core",
+      "evidence": "Docs/CoreV6Parity.md",
+      "reviewStatus": "imported-reviewed-with-gaps",
+      "archiveIntegrity": "sha512-5ImK0xWjYSL0iOy6WexMJigvvjJZLCEX2wKdlQ8AmC/gveSeoEc5s1VZY1UAfR75BbAJggE4zNtaAA/IRDzT2w==",
+      "sourceRef": "npm:@ai-sdk/react@4.0.157",
+      "testRef": "682e2dd71456f14f9da33a1b983d1998c3a1184c",
+      "testRefRelationship": "inventory-snapshot-not-release-verified",
+      "contractFamilies": [],
+      "contractReview": "not-imported; inspect upstream declarations before extraction"
+    }
+  ],
+  "note": "Independent port. Imported test refs and contract review gaps retain their original status; export is not new upstream parity proof.",
+  "canonicalInputs": [
+    {
+      "canonicalPath": ".github/workflows/package-check.yml",
+      "sha256": "7ff448e130f7aed96c38accdf828b6d993997ebc5317358347e9a70a649e67ca"
+    },
+    {
+      "canonicalPath": "LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Package.swift",
+      "sha256": "dbb59c9e3eb9a1366d6850575e9b9ec0cc45fa52e23b86dac49c5a851fa171f7"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Porting/map.json",
+      "sha256": "ec26b293c8860c939833c02fe26f26eb6afb54a36105a6c7fd566611862d3fb0"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/README.md",
+      "sha256": "a60c54963d1d9ae8cc96778dc3072806796073ae27bc53f93331160fee7b7d42"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIAgent.swift",
+      "sha256": "ebaf6ca9f4c7167674dfe07226f4c3dea64f46c6341ffd736a82eb57a8473a3a"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIChatSession.swift",
+      "sha256": "77b08192c2c51439bfc999661c7fd120bb04214d4478eb65617450ea2142e8fc"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIChatTransport.swift",
+      "sha256": "744cd9237f49ec7137a9852719d3bb5831a7d842217f927076873d30caf22d47"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageConversion.swift",
+      "sha256": "cf6b0a46fdb5783a79038583679a208c0a91050dcb351d2cdc3f198bc7b0c0f3"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageStreamReducer.swift",
+      "sha256": "79acf0ccbfc23eab71a97ac3af2279b18c3c66734c37b05cfb849c7e96a285a9"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageValidation.swift",
+      "sha256": "0ca06cdd44f41846970cf0d357df70eea324c83eecdf0e8a5a014df4a458b0fa"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/CoreUIMessages.swift",
+      "sha256": "d193caea9f28d396681a808088a72e4d582f8fa01ab7f3608fe0946464b60cf5"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/Errors.swift",
+      "sha256": "bbe503fe54de580920e901081b6f4b9b78a15f31d03116ccc4b4b3f095953e05"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AIChatSessionTests.swift",
+      "sha256": "bebfe4b6f06fb7b0904e8a570d43c05affb5fefb33a137eb879b545f82c5a84e"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AgentUIStreamTests.swift",
+      "sha256": "49d4bda723fb9f80d428904de9c3ee86a5d4407853b487ca3a19c39d60603f0f"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiConvertToModelMessagesUpstreamTests.swift",
+      "sha256": "e74fb4ac600975c4aa0460bd62401fcdb7b75458c19c2c53524adc7f1604c888"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiUIMessageStreamUpstreamTests.swift",
+      "sha256": "22ca5e17c02409d8241d73cf6ba0a986a036e6b067945418578e84289593e4b8"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiValidateUIMessagesUpstreamTests.swift",
+      "sha256": "df64baa4c3e013b85c75bc745cd8570e48cf0233e40bf61580cb619ccd880337"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/FixtureDownloadTransport.swift",
+      "sha256": "5a8239396315769d45c0e2235f37b6864e0810a101718db21257cde28969e895"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/TestSupport.swift",
+      "sha256": "85365958b132637c00427c1bf3d8d9803d2b942d02d7a22e57b124657fdbefb5"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/UIContractTests.swift",
+      "sha256": "811220bad88d26d2c3c7107b54c10581554c38e3224d95fba882e718ef139c56"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift",
+      "sha256": "135cd1b7654799872fa553e2c87d309abdf874e133d01f126993b4e88edd2818"
+    }
+  ]
+}
