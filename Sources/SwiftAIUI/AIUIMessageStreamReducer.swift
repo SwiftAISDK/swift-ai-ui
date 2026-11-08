@@ -101,6 +101,10 @@ public struct AIUIMessageStreamReducer: Sendable {
 
     private mutating func consumeCanonical(_ part: LanguageStreamPart) throws {
         switch part {
+        case .ping, .requestMetadata:
+            break
+        case let .steeringMessage(id, userMessage, _):
+            message.parts.append(.steeringMessage(.init(id: id, content: userMessage.content)))
         case let .streamStart(warnings):
             if !warnings.isEmpty {
                 message.metadata["warnings"] = .array(warnings.map(warningJSON))

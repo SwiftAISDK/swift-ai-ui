@@ -67,7 +67,15 @@ public struct AIUIDataPart: Equatable, Hashable, Sendable {
     }
 }
 
+/// A delivered user message embedded between assistant generation steps.
+public struct AIUISteeringMessagePart: Equatable, Hashable, Sendable {
+    public var id: String
+    public var content: [AIContentPart]
+    public init(id: String, content: [AIContentPart]) { self.id = id; self.content = content }
+}
+
 public enum AIUIMessagePart: Equatable, Hashable, Sendable {
+    case steeringMessage(AIUISteeringMessagePart)
     case text(AIUITextPart)
     case reasoning(AIUIReasoningPart)
     case source(AISource)

@@ -15,12 +15,14 @@
         "packages/react/src/mcp-apps/sandbox.test.ts",
         "packages/react/src/mcp-apps/utils.test.ts",
         "packages/react/src/use-chat.ui.test.tsx",
+        "packages/react/src/use-completion.test-d.ts",
         "packages/react/src/use-completion.ui.test.tsx",
         "packages/react/src/use-object.ui.test.tsx",
         "packages/react/src/use-realtime-live.test.tsx",
         "packages/react/src/use-realtime-runtime.test.tsx",
         "packages/react/src/use-realtime-ssr.test.tsx",
         "packages/react/src/use-realtime-websocket.test.tsx",
+        "packages/react/src/use-realtime.test-d.ts",
         "packages/react/src/use-realtime.test.tsx"
       ]
     },
@@ -238,7 +240,8 @@
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/FixtureDownloadTransport.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/TestSupport.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/UIContractTests.swift",
-      "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift"
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261108UISteeringTests.swift"
     ],
     "resources": []
   },
@@ -248,5 +251,5 @@
       "reason": "Preserve Swift async/await, Sendable, Foundation transport and existing documented gaps; see Docs/CoreV6Parity.md and PortingStatus.md."
     }
   ],
-  "reviewNote": "M6: optional native UI messages, validation/conversion/reducer, direct chat transport, observable session and agent UI stream bridge extracted. Core agent and AIChatRequestOptions declarations stay in core. Whole UI suites and UI-only contract/agent cases move; mixed core/UI/MCP integration cases remain in the workspace. Existing React/browser-specific gaps remain unchanged."
+  "reviewNote": "2026-11-08: exact release-matched published source, declarations and changed tests reviewed for assigned packages. Native delta and test dispositions: Docs/WeeklyUpstreamAudit20261108.json. Existing broader product gaps remain; module ownership is exact and delta review is not full-package parity."
 }

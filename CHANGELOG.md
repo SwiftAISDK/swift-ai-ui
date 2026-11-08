@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## 1.1.0
 
-- Extract the existing runtime, typed settings and standalone tests from the compatibility aggregate. Preserve the reviewed npm baseline and existing capability/gap boundaries.
-  Compatibility: Initial independent Swift package version. Existing SwiftAISDK entry points remain in the development compatibility facade; no npm-version equivalence is implied.
+- Add delivered-steering UI parts, validation and ordered model-message replay. Existing UI enum gains one case. Reviewed published upstream delta: ai 7.0.159 to 7.0.165, @ai-sdk/react 4.0.163 to 4.0.169. Validation passed: node Scripts/test-packages.mjs (all 52 owning packages plus the complete local facade; 3,965 reported tests and 33 explicit live skips); node Scripts/sdk.mjs dev test; node Scripts/sdk.mjs generate --check; node --test Scripts/tests/*.test.cjs (27 passed); core/provider isolation and version resolution; 52 deterministic package exports, 106 catalog consumers and four additional exact retained-minimum graphs; docs-site install/check/build (100 pages); git diff --check. No paid live-service calls were run. The publication pipeline requires successful Swift 6.3.3 CI at the exact canonical source before publishing.
+  Compatibility: Minor release for additive native functionality under the project convention. Existing exhaustive switches must handle the new documented enum cases; see Docs/Migration.md. Exact old function/initializer selectors remain available through forwarding overloads. Direct minimums change only for concrete API use or required inherited behavior. Version-delta review does not establish full-package parity or live-service acceptance. Handle AIUIMessagePart.steeringMessage in exhaustive switches and use ordered convertToModelMessages for delivered steering history. Updated direct ranges: swift-ai-core 1.0.0 to 1.3.0.

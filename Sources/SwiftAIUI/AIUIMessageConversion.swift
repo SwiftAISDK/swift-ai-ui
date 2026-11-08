@@ -51,6 +51,19 @@ public func convertToModelMessages(
                 return false
             }
         }
+        if filteredMessage.role == .assistant && filteredMessage.parts.contains(where: { if case .steeringMessage = $0 { return true }; return false }) {
+            var output: [AIMessage] = []
+            var block = filteredMessage
+            block.parts = []
+            for part in filteredMessage.parts {
+                if case let .steeringMessage(steering) = part {
+                    if !block.parts.isEmpty { output += splitAssistantResponseMessages(try convertToModelMessage(block, path: "messages[\(index)]", convertDataPart: convertDataPart, unavailableStaticToolCallIDs: unavailableIDs)); block.parts = [] }
+                    output.append(AIMessage(role: .user, content: steering.content))
+                } else { block.parts.append(part) }
+            }
+            if !block.parts.isEmpty { output += splitAssistantResponseMessages(try convertToModelMessage(block, path: "messages[\(index)]", convertDataPart: convertDataPart, unavailableStaticToolCallIDs: unavailableIDs)) }
+            return output
+        }
         let modelMessage = try convertToModelMessage(filteredMessage, path: "messages[\(index)]", convertDataPart: convertDataPart, unavailableStaticToolCallIDs: unavailableIDs)
         return splitAssistantResponseMessages(modelMessage)
     }
@@ -95,7 +108,10 @@ public func convertToModelMessages(
 }
 
 public func convertToModelMessage(_ message: AIUIMessage) throws -> AIMessage {
-    try convertToModelMessage(message, path: "message")
+    guard !message.parts.contains(where: { if case .steeringMessage = $0 { return true }; return false }) else {
+        throw AIUIMessageStreamError(message: "Steering history contains multiple model messages. Use convertToModelMessages to preserve their order.")
+    }
+    return try convertToModelMessage(message, path: "message")
 }
 
 private func convertToModelMessage(
@@ -124,7 +140,7 @@ private func convertToModelMessage(
             if message.role == .system {
                 systemText += text.text
                 providerMetadata.merge(text.providerMetadata) { _, new in new }
-            } else if !text.text.isEmpty {
+            } else if !text.text.isEmpty || !text.providerMetadata.isEmpty {
                 content.append(.text(text.text, providerMetadata: text.providerMetadata))
             }
         case let .reasoning(reasoning):
@@ -159,7 +175,7 @@ private func convertToModelMessage(
             content.append(.custom(value, providerMetadata: providerMetadata))
         case let .data(data):
             if let part = try convertDataPart?(data) { content.append(part) }
-        case .source, .reasoningFile, .metadata, .error, .raw:
+        case .steeringMessage, .source, .reasoningFile, .metadata, .error, .raw:
             break
         }
     }

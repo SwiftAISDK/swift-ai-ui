@@ -70,6 +70,9 @@ public func safeValidateUIMessages(_ messages: [AIUIMessage]) -> AIUIMessageVali
 
         for (partIndex, part) in message.parts.enumerated() {
             let partPath = "\(messagePath).parts[\(partIndex)]"
+            if message.role != .assistant, case .steeringMessage = part {
+                issues.append(.init(path: partPath, message: "Steering history belongs to an assistant message."))
+            }
             collectPartReferences(part, path: partPath, toolCallIDs: &toolCallIDs, approvalRequestIDs: &approvalRequestIDs, issues: &issues)
         }
     }
@@ -339,6 +342,14 @@ private func collectPartReferences(
     issues: inout [AIUIMessageValidationIssue]
 ) {
     switch part {
+    case let .steeringMessage(steering):
+        validateNonEmpty(steering.id, path: "\(path).steeringMessage.id", label: "steering message id", issues: &issues)
+        for part in steering.content {
+            switch part {
+            case .text, .imageURL, .data, .file, .providerReference: break
+            default: issues.append(.init(path: "\(path).steeringMessage.content", message: "Steering messages accept text and file content only."))
+            }
+        }
     case let .text(text):
         validateOptionalID(text.id, path: "\(path).text.id", issues: &issues)
         validateCitations(text.citations, path: "\(path).text.citations", issues: &issues)
