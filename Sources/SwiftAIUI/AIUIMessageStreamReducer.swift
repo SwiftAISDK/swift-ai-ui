@@ -66,6 +66,9 @@ private actor AIUIMessageStreamLifecycleState {
 
 public struct AIUIMessageStreamReducer: Sendable {
     public private(set) var message: AIUIMessage
+    public var errorOptions = AIUIMessageErrorOptions()
+    private var didRedactToolError = false
+    private var didWarnAboutRedactedHistory = false
 
     private var textPartIndexes: [String: Int] = [:]
     private var reasoningPartIndexes: [String: Int] = [:]
@@ -100,6 +103,19 @@ public struct AIUIMessageStreamReducer: Sendable {
     }
 
     private mutating func consumeCanonical(_ part: LanguageStreamPart) throws {
+        if didRedactToolError, !didWarnAboutRedactedHistory {
+            switch part {
+            case .reasoningStart, .reasoningDelta, .reasoningDeltaPart:
+                didWarnAboutRedactedHistory = true
+                var warnings = message.metadata["warnings"]?.arrayValue ?? []
+                warnings.append(.object([
+                    "type": "compatibility", "feature": "redactToolErrors",
+                    "message": "Redacting a tool error can change history already seen by a reasoning model. Prefer safe errors from the tool itself."
+                ]))
+                message.metadata["warnings"] = .array(warnings)
+            default: break
+            }
+        }
         switch part {
         case .ping, .requestMetadata:
             break
@@ -153,7 +169,17 @@ public struct AIUIMessageStreamReducer: Sendable {
         case let .toolCall(call):
             upsertToolCall(call)
         case let .toolResult(result):
-            message.parts.append(.toolResult(result))
+            if result.isError, !result.providerExecuted, errorOptions.shouldRedactToolErrors {
+                var redacted = result
+                let original = result.modelOutput?["value"]?.stringValue
+                    ?? result.result["error"]?.stringValue ?? result.result.stringValue
+                    ?? canonicalJSONText(result.result) ?? "Tool execution failed."
+                let safe = errorOptions.onError?(original) ?? "An error occurred."
+                redacted.result = .string(safe)
+                redacted.modelOutput = ["type": "error-text", "value": .string(safe)]
+                message.parts.append(.toolResult(redacted))
+                didRedactToolError = true
+            } else { message.parts.append(.toolResult(result)) }
         case let .toolApprovalRequest(request):
             message.parts.append(.toolApprovalRequest(request))
         case let .toolApprovalResponse(response):
@@ -174,7 +200,8 @@ public struct AIUIMessageStreamReducer: Sendable {
         case let .raw(value):
             message.parts.append(.raw(value))
         case let .error(errorMessage, rawValue):
-            message.parts.append(.error(message: errorMessage, rawValue: rawValue))
+            if let formatter = errorOptions.onError { message.parts.append(.error(message: formatter(errorMessage), rawValue: nil)) }
+            else { message.parts.append(.error(message: errorMessage, rawValue: rawValue)) }
         case let .finish(reason, usage):
             recordFinish(reason: reason, usage: usage, providerMetadata: [:])
         case let .finishMetadata(reason, usage, providerMetadata):
@@ -213,11 +240,24 @@ public struct AIUIMessageStreamReducer: Sendable {
         originalMessage: AIUIMessage? = nil,
         onEnd: (@Sendable (AIUIMessageStreamEndEvent) async -> Void)? = nil
     ) -> AsyncThrowingStream<AIUIMessage, Error> {
+        snapshots(from: stream, messageID: messageID, terminateOnError: terminateOnError,
+                  originalMessage: originalMessage, onEnd: onEnd, errorOptions: .init())
+    }
+
+    public static func snapshots(
+        from stream: AsyncThrowingStream<LanguageStreamPart, Error>,
+        messageID: String = UUID().uuidString,
+        terminateOnError: Bool = false,
+        originalMessage: AIUIMessage? = nil,
+        onEnd: (@Sendable (AIUIMessageStreamEndEvent) async -> Void)? = nil,
+        errorOptions: AIUIMessageErrorOptions
+    ) -> AsyncThrowingStream<AIUIMessage, Error> {
         AsyncThrowingStream { continuation in
             let initialMessage = originalMessage ?? .assistant(id: messageID)
             let lifecycle = AIUIMessageStreamLifecycleState(message: initialMessage)
             let task = Task {
                 var reducer = AIUIMessageStreamReducer(message: initialMessage)
+                reducer.errorOptions = errorOptions
                 do {
                     for try await part in stream {
                         try Task.checkCancellation()

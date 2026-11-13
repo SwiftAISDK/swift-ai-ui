@@ -59,9 +59,14 @@ public final class AIChatSession: ObservableObject {
     @Published public private(set) var messages: [AIUIMessage]
     @Published public private(set) var status: AIChatSessionStatus
     @Published public private(set) var error: Error?
+    /// Messages waiting for the current response or a client tool response.
+    @Published public private(set) var experimentalQueuedMessages: [AIUIMessage] = []
+    public private(set) var experimentalQueueEnabled = false
 
     public let chatID: String
-    public var transport: any AIChatTransport
+    public var transport: any AIChatTransport {
+        didSet { if experimentalQueueEnabled { stop() } }
+    }
     public var generateMessageID: @Sendable () -> String
     public var onError: (@MainActor @Sendable (Error) -> Void)?
     public var onFinish: (@MainActor @Sendable (AIChatSessionFinishEvent) -> Void)?
@@ -79,6 +84,10 @@ public final class AIChatSession: ObservableObject {
     private var consumedApprovalMessageIDs: Set<String> = []
     private var interruptedMessageIDs: Set<String> = []
     private var activeRequestOptions = AIChatSessionRequestOptions()
+    private var queuedMessageOptions: [String: AIChatSessionRequestOptions] = [:]
+    private var isQueuePaused = false
+    private var isDequeuing = false
+    private var deferredApprovalOptions: AIChatSessionRequestOptions?
 
     public init(
         chatID: String = UUID().uuidString,
@@ -104,11 +113,54 @@ public final class AIChatSession: ObservableObject {
         status == .submitted || status == .streaming
     }
 
+    /// Enables ordered message queuing. The original initializer is retained.
+    public convenience init(
+        chatID: String = UUID().uuidString,
+        transport: any AIChatTransport,
+        messages: [AIUIMessage] = [],
+        experimentalQueue: Bool,
+        generateMessageID: @escaping @Sendable () -> String = { UUID().uuidString },
+        onError: (@MainActor @Sendable (Error) -> Void)? = nil,
+        onFinish: (@MainActor @Sendable (AIChatSessionFinishEvent) -> Void)? = nil,
+        sendAutomaticallyWhen: (@MainActor @Sendable ([AIUIMessage]) -> Bool)? = nil
+    ) {
+        self.init(chatID: chatID, transport: transport, messages: messages,
+                  generateMessageID: generateMessageID, onError: onError,
+                  onFinish: onFinish, sendAutomaticallyWhen: sendAutomaticallyWhen)
+        experimentalQueueEnabled = experimentalQueue
+    }
+
+    public func experimentalRemoveQueuedMessage(_ id: String) {
+        queuedMessageOptions.removeValue(forKey: id)
+        experimentalQueuedMessages.removeAll { $0.id == id }
+    }
+
+    /// Cancels and drains owned response work before sending this item first.
+    @discardableResult
+    public func experimentalSendQueuedMessageNow(_ id: String) -> Task<Void, Never> {
+        guard let item = experimentalQueuedMessages.first(where: { $0.id == id }) else { return Task {} }
+        experimentalQueuedMessages = [item] + experimentalQueuedMessages.filter { $0.id != id }
+        let tasks = Array(inFlightTasks.values)
+        activeStopCount += 1
+        stop()
+        let generation = stopGeneration
+        for task in tasks { task.cancel() }
+        return Task { [weak self] in
+            guard let self else { return }
+            for task in tasks { await task.value }
+            activeStopCount -= 1
+            guard stopGeneration == generation,
+                  experimentalQueuedMessages.contains(where: { $0.id == id }) else { return }
+            await resumeQueue(skipWaitForUser: true, options: queuedMessageOptions[id] ?? .init()).value
+        }
+    }
+
     @discardableResult
     public func sendMessage(
         options: AIChatSessionRequestOptions = AIChatSessionRequestOptions()
     ) -> Task<Void, Never> {
         stop()
+        isQueuePaused = false
         if let approvalMessageID = pendingApprovalMessageID ?? latestApprovalResumeTarget() {
             return startStream(
                 trigger: .submitMessage,
@@ -167,7 +219,16 @@ public final class AIChatSession: ObservableObject {
         replacingMessageID: String? = nil,
         options: AIChatSessionRequestOptions = AIChatSessionRequestOptions()
     ) -> Task<Void, Never> {
+        if experimentalQueueEnabled, !isDequeuing, replacingMessageID == nil,
+           isRunning || isWaitingForUser() || !experimentalQueuedMessages.isEmpty {
+            let wasPaused = isQueuePaused
+            experimentalQueuedMessages.append(message)
+            queuedMessageOptions[message.id] = options
+            return resumeQueue(skipWaitForUser: wasPaused, options: options)
+        }
+        if replacingMessageID != nil { clearQueueForHistoryChange() }
         stop()
+        isQueuePaused = false
         let userMessage: AIUIMessage
         if let replacingMessageID {
             guard let index = messages.firstIndex(where: { $0.id == replacingMessageID }) else {
@@ -213,7 +274,9 @@ public final class AIChatSession: ObservableObject {
         messageID: String? = nil,
         options: AIChatSessionRequestOptions = AIChatSessionRequestOptions()
     ) -> Task<Void, Never> {
+        clearQueueForHistoryChange()
         stop()
+        isQueuePaused = false
         guard let target = regenerationTarget(messageID: messageID) else {
             return failStart(AIError.invalidArgument(
                 argument: "messageID",
@@ -278,6 +341,8 @@ public final class AIChatSession: ObservableObject {
 
     public func stop(reason: String? = "stopped") {
         stopGeneration &+= 1
+        isQueuePaused = true
+        deferredApprovalOptions = nil
         let stoppedRunID = activeRunID
         currentAbortController?.abort(reason: reason)
         currentTask?.cancel()
@@ -298,7 +363,7 @@ public final class AIChatSession: ObservableObject {
     /// The synchronous ``stop(reason:)`` remains available for UI actions.
     public func stopAndWait(reason: String? = "stopped") async {
         activeStopCount += 1
-        defer { activeStopCount -= 1 }
+        defer { activeStopCount -= 1; _ = settleQueue() }
         let tasks = Array(inFlightTasks.values)
         stop(reason: reason)
         for task in tasks { task.cancel() }
@@ -310,6 +375,7 @@ public final class AIChatSession: ObservableObject {
         activeStopCount += 1
         defer { activeStopCount -= 1 }
         let ownedTransport = transport
+        clearQueueForHistoryChange()
         await stopAndWait()
         await ownedTransport.close()
     }
@@ -349,6 +415,7 @@ public final class AIChatSession: ObservableObject {
             metadata: metadata
         ))
         triggerAutomaticSendIfNeeded(options: options)
+        _ = settleQueue()
     }
 
     public func addToolApprovalResponse(
@@ -374,6 +441,7 @@ public final class AIChatSession: ObservableObject {
         }
         pendingApprovalMessageID = approvalMessageID
         triggerAutomaticSendIfNeeded(options: options, approvalMessageID: approvalMessageID)
+        _ = settleQueue()
     }
 
     private func startStream(
@@ -397,9 +465,11 @@ public final class AIChatSession: ObservableObject {
         status = .submitted
         error = nil
 
+        let predecessors = experimentalQueueEnabled ? Array(inFlightTasks.values) : []
         let task = Task { [weak self] in
             guard let self else { return }
             defer { inFlightTasks.removeValue(forKey: runID) }
+            for predecessor in predecessors { await predecessor.value }
             guard activeRunID == runID, !Task.isCancelled else { return }
             do {
                 let stream = try transport.sendMessages(AIChatTransportRequest(
@@ -492,6 +562,7 @@ public final class AIChatSession: ObservableObject {
             status = .ready
         }
         let finishedGeneration = stopGeneration
+        if isAbort || isError || finishReason == "interrupted" { isQueuePaused = true }
         onFinish?(AIChatSessionFinishEvent(
             message: finishedMessage,
             messages: messages,
@@ -502,6 +573,7 @@ public final class AIChatSession: ObservableObject {
         ))
         if !isAbort && !isError && finishReason != "interrupted" && stopGeneration == finishedGeneration {
             triggerAutomaticSendIfNeeded(options: activeRequestOptions)
+            _ = settleQueue(generation: finishedGeneration)
         }
     }
 
@@ -521,6 +593,7 @@ public final class AIChatSession: ObservableObject {
         activeResponseMessageID = nil
         activeConsumedApprovalMessageID = nil
         status = .ready
+        _ = settleQueue()
     }
 
     private func failStart(_ error: Error) -> Task<Void, Never> {
@@ -535,6 +608,7 @@ public final class AIChatSession: ObservableObject {
         approvalMessageID: String? = nil
     ) {
         guard activeStopCount == 0, !isRunning else { return }
+        if experimentalQueueEnabled && isQueuePaused { return }
         guard messages.last.map({ !interruptedMessageIDs.contains($0.id) }) ?? true,
               messages.last(where: { $0.role == .assistant }).map({ !interruptedMessageIDs.contains($0.id) }) ?? true,
               approvalMessageID.map({ !interruptedMessageIDs.contains($0) }) ?? true else { return }
@@ -579,6 +653,92 @@ public final class AIChatSession: ObservableObject {
         }
         let description = String(describing: error).lowercased()
         return description.contains("network") || description.contains("connection")
+    }
+
+    private func clearQueueForHistoryChange() {
+        experimentalQueuedMessages.removeAll()
+        queuedMessageOptions.removeAll()
+        deferredApprovalOptions = nil
+    }
+
+    private func resumeQueue(skipWaitForUser: Bool, options: AIChatSessionRequestOptions) -> Task<Void, Never> {
+        isQueuePaused = false
+        // A replied approval must reach the model before the next user message.
+        if canSendQueuedApproval() {
+            if !isRunning, activeStopCount == 0 { return sendMessage(options: options) }
+            deferredApprovalOptions = options
+        }
+        return settleQueue(skipWaitForUser: skipWaitForUser) ?? Task {}
+    }
+
+    private func settleQueue(generation: UInt64? = nil, skipWaitForUser: Bool = false) -> Task<Void, Never>? {
+        guard experimentalQueueEnabled, !isQueuePaused, !isRunning, activeStopCount == 0,
+              generation == nil || generation == stopGeneration else { return nil }
+        if let options = deferredApprovalOptions, canSendQueuedApproval() {
+            deferredApprovalOptions = nil
+            return sendMessage(options: options)
+        }
+        guard !experimentalQueuedMessages.isEmpty else { return nil }
+        guard skipWaitForUser || !isWaitingForUser() else { return nil }
+        let message = experimentalQueuedMessages.removeFirst()
+        let options = queuedMessageOptions.removeValue(forKey: message.id) ?? .init()
+        isDequeuing = true
+        defer { isDequeuing = false }
+        return sendMessage(message, options: options)
+    }
+
+    private func isWaitingForUser() -> Bool {
+        guard let index = messages.lastIndex(where: { $0.role == .assistant }) else { return false }
+        // Native UI stores tool responses as separate .tool messages too.
+        let parts = messages[index...].flatMap(\.parts)
+        let results = Set(parts.compactMap { part -> String? in
+            if case let .toolResult(result) = part, !result.preliminary { return result.toolCallID }
+            return nil
+        })
+        let consumedCalls = consumedApprovalMessageIDs.contains(messages[index].id)
+            ? Set(messages[index].parts.compactMap { part -> String? in
+                if case let .toolApprovalRequest(request) = part { return request.toolCallID }
+                return nil
+            }) : []
+        for part in messages[index].parts {
+            switch part {
+            case let .toolApprovalRequest(request):
+                if !consumedApprovalMessageIDs.contains(messages[index].id),
+                   !results.contains(request.toolCallID ?? "") { return true }
+            case let .toolCall(call) where !call.providerExecuted:
+                if !results.contains(call.id), !consumedCalls.contains(call.id) { return true }
+            default: break
+            }
+        }
+        return false
+    }
+
+    private func canSendQueuedApproval() -> Bool {
+        guard let index = messages.lastIndex(where: { $0.role == .assistant }),
+              !consumedApprovalMessageIDs.contains(messages[index].id) else { return false }
+        let parts = messages[index...].flatMap(\.parts)
+        let responses = Set(parts.compactMap { part -> String? in
+            if case let .toolApprovalResponse(response) = part { return response.id }; return nil
+        })
+        let results = Set(parts.compactMap { part -> String? in
+            if case let .toolResult(result) = part, !result.preliminary { return result.toolCallID }; return nil
+        })
+        var repliedCalls: Set<String> = []
+        var hasReply = false
+        for part in messages[index].parts {
+            if case let .toolApprovalRequest(request) = part {
+                if let id = request.toolCallID, results.contains(id) { continue }
+                guard responses.contains(request.id) else { return false }
+                hasReply = true
+                if let id = request.toolCallID { repliedCalls.insert(id) }
+            }
+        }
+        return hasReply && !messages[index].parts.contains { part in
+            if case let .toolCall(call) = part {
+                return !call.providerExecuted && !results.contains(call.id) && !repliedCalls.contains(call.id)
+            }
+            return false
+        }
     }
 
     private func latestApprovalResumeTarget() -> String? {

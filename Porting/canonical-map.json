@@ -226,6 +226,7 @@
       "Packages/swift-ai-ui/Sources/SwiftAIUI/AIChatSession.swift",
       "Packages/swift-ai-ui/Sources/SwiftAIUI/AIChatTransport.swift",
       "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageConversion.swift",
+      "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageErrorOptions.swift",
       "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageStreamReducer.swift",
       "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageValidation.swift",
       "Packages/swift-ai-ui/Sources/SwiftAIUI/CoreUIMessages.swift",
@@ -240,8 +241,10 @@
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/FixtureDownloadTransport.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/TestSupport.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/UIContractTests.swift",
-      "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift",
-      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261108UISteeringTests.swift"
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261108UISteeringTests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261114QueueTests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261114ValidationAndErrorTests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift"
     ],
     "resources": []
   },
@@ -251,5 +254,5 @@
       "reason": "Preserve Swift async/await, Sendable, Foundation transport and existing documented gaps; see Docs/CoreV6Parity.md and PortingStatus.md."
     }
   ],
-  "reviewNote": "2026-11-08: exact release-matched published source, declarations and changed tests reviewed for assigned packages. Native delta and test dispositions: Docs/WeeklyUpstreamAudit20261108.json. Existing broader product gaps remain; module ownership is exact and delta review is not full-package parity."
+  "reviewNote": "2026-11-08: exact release-matched published source, declarations and changed tests reviewed for assigned packages. Native delta and test dispositions: Docs/WeeklyUpstreamAudit20261108.json. Existing broader product gaps remain; module ownership is exact and delta review is not full-package parity. 2026-11-14: native message queue, bounded first-invalid/finite-metadata validation and explicit tool error presentation; exact react and ai UI dispositions in WeeklyUpstreamAudit20261114."
 }

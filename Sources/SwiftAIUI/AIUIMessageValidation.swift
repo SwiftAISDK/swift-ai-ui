@@ -37,7 +37,10 @@ public struct AIUIMessageValidationResult: Equatable, Sendable {
 public func validateUIMessages(_ messages: [AIUIMessage]) throws -> [AIUIMessage] {
     let result = safeValidateUIMessages(messages)
     guard result.isValid else {
-        if result.issues.count == 1, let approvalError = firstToolApprovalValidationError(in: messages) {
+        if result.issues.count == 1,
+           result.issues[0].path.contains(".toolApproval"),
+           result.issues[0].message.contains("must reference"),
+           let approvalError = firstToolApprovalValidationError(in: messages) {
             throw approvalError
         }
         throw AIUIMessageStreamError(
@@ -67,6 +70,7 @@ public func safeValidateUIMessages(_ messages: [AIUIMessage]) -> AIUIMessageVali
         if message.role != .assistant && message.parts.isEmpty {
             issues.append(AIUIMessageValidationIssue(path: "\(messagePath).parts", message: "message must contain at least one part."))
         }
+        if !issues.isEmpty { return .init(messages: messages, issues: issues) }
 
         for (partIndex, part) in message.parts.enumerated() {
             let partPath = "\(messagePath).parts[\(partIndex)]"
@@ -74,6 +78,8 @@ public func safeValidateUIMessages(_ messages: [AIUIMessage]) -> AIUIMessageVali
                 issues.append(.init(path: partPath, message: "Steering history belongs to an assistant message."))
             }
             collectPartReferences(part, path: partPath, toolCallIDs: &toolCallIDs, approvalRequestIDs: &approvalRequestIDs, issues: &issues)
+            if issues.isEmpty, let issue = firstUIJSONIssue(part, path: partPath) { issues.append(issue) }
+            if !issues.isEmpty { return .init(messages: messages, issues: issues) }
         }
     }
 
@@ -81,6 +87,7 @@ public func safeValidateUIMessages(_ messages: [AIUIMessage]) -> AIUIMessageVali
         for (partIndex, part) in message.parts.enumerated() {
             let partPath = "messages[\(messageIndex)].parts[\(partIndex)]"
             validatePartLinks(part, path: partPath, toolCallIDs: toolCallIDs, approvalRequestIDs: approvalRequestIDs, issues: &issues)
+            if !issues.isEmpty { return .init(messages: messages, issues: issues) }
         }
     }
 
@@ -212,6 +219,7 @@ private func safeValidateUIMessages(
                     newlyUnavailable.insert(call.id)
                 } else {
                     issues.append(.init(path: path, message: "No tool schema found for tool '\(call.name)'."))
+                    return .init(messages: normalized, issues: issues)
                 }
                 continue
             }
@@ -244,6 +252,7 @@ private func safeValidateUIMessages(
                     newlyUnavailable.insert(call.id)
                 } else {
                     issues.append(.init(path: path, message: String(describing: error)))
+                    return .init(messages: normalized, issues: issues)
                 }
             }
             if let result, !result.isError, let outputSchema = schema.outputSchema {
@@ -251,6 +260,7 @@ private func safeValidateUIMessages(
                     try AIJSONSchemaValidator.validate(result.result, schema: outputSchema)
                 } catch {
                     issues.append(.init(path: resultInfo?.path ?? path, message: String(describing: error)))
+                    return .init(messages: normalized, issues: issues)
                 }
             }
         }
@@ -347,7 +357,9 @@ private func collectPartReferences(
         for part in steering.content {
             switch part {
             case .text, .imageURL, .data, .file, .providerReference: break
-            default: issues.append(.init(path: "\(path).steeringMessage.content", message: "Steering messages accept text and file content only."))
+            default:
+                issues.append(.init(path: "\(path).steeringMessage.content", message: "Steering messages accept text and file content only."))
+                return
             }
         }
     case let .text(text):
@@ -454,5 +466,62 @@ private func validateCitations(_ citations: [AICitation], path: String, issues: 
         if !validSource { issues.append(.init(path: "\(base).source", message: "Citation requires a URL source or a document with mediaType and title.")) }
         if let value = citation.startIndex, value < 0 { issues.append(.init(path: "\(base).startIndex", message: "Citation offsets must be nonnegative.")) }
         if let value = citation.endIndex, value < 0 { issues.append(.init(path: "\(base).endIndex", message: "Citation offsets must be nonnegative.")) }
+        if issues.isEmpty, let issue = firstUIJSONValueIssue(.object(source.providerMetadata), path: "\(base).source.providerMetadata") { issues.append(issue) }
+        if !issues.isEmpty { return }
     }
+}
+
+/// Typed Swift JSON rules exclude functions, cycles and bigint by construction;
+/// a Double still needs the upstream finite-number check before schema work.
+private func firstUIJSONIssue(_ part: AIUIMessagePart, path: String) -> AIUIMessageValidationIssue? {
+    var values: [(String, JSONValue)] = []
+    switch part {
+    case let .steeringMessage(value):
+        for (index, content) in value.content.enumerated() {
+            let metadata: [String: JSONValue]
+            switch content {
+            case let .text(_, providerMetadata), let .imageURL(_, providerMetadata),
+                 let .data(_, _, providerMetadata), let .file(_, _, _, providerMetadata),
+                 let .providerReference(_, _, _, providerMetadata): metadata = providerMetadata
+            default: continue
+            }
+            values.append(("\(path).steeringMessage.content[\(index)].providerMetadata", .object(metadata)))
+        }
+    case let .text(value):
+        values.append(("\(path).text.providerMetadata", .object(value.providerMetadata)))
+    case let .reasoning(value): values.append(("\(path).reasoning.providerMetadata", .object(value.providerMetadata)))
+    case let .source(value): values.append(("\(path).source.providerMetadata", .object(value.providerMetadata)))
+    case let .file(value), let .reasoningFile(value): values.append(("\(path).file.providerMetadata", .object(value.providerMetadata)))
+    case let .toolCall(value):
+        values.append(("\(path).toolCall.providerMetadata", .object(value.providerMetadata)))
+        if let metadata = value.toolMetadata { values.append(("\(path).toolCall.toolMetadata", .object(metadata))) }
+    case let .toolResult(value): values.append(("\(path).toolResult.providerMetadata", .object(value.providerMetadata)))
+    case let .toolApprovalRequest(value): values.append(("\(path).toolApprovalRequest.providerMetadata", .object(value.providerMetadata)))
+    case let .toolApprovalResponse(value): values.append(("\(path).toolApprovalResponse.providerMetadata", .object(value.providerMetadata)))
+    case let .custom(_, providerMetadata): values.append(("\(path).custom.providerMetadata", .object(providerMetadata)))
+    case let .data(value): values.append(("\(path).data.providerMetadata", .object(value.providerMetadata)))
+    default: break
+    }
+    for (location, value) in values {
+        if let issue = firstUIJSONValueIssue(value, path: location) { return issue }
+    }
+    return nil
+}
+
+private func firstUIJSONValueIssue(_ value: JSONValue, path: String) -> AIUIMessageValidationIssue? {
+    var stack: [(String, JSONValue)] = [(path, value)]
+    while let (location, value) = stack.popLast() {
+        switch value {
+        case let .number(number) where !number.isFinite:
+            return .init(path: location, message: "Invalid JSON value. Expected a finite number.")
+        case let .array(array):
+            for index in array.indices.reversed() { stack.append(("\(location)[\(index)]", array[index])) }
+        case let .object(object):
+            for key in object.keys.sorted().reversed() where key != "__proto__" {
+                if let child = object[key] { stack.append(("\(location).\(key)", child)) }
+            }
+        default: break
+        }
+    }
+    return nil
 }

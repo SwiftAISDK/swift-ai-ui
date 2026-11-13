@@ -97,6 +97,7 @@ public struct DirectAIChatTransport: AIChatTransport {
     public var sendReasoning: Bool
     public var sendSources: Bool
     public var sendFinish: Bool
+    public var errorOptions = AIUIMessageErrorOptions()
     public var generateMessageID: @Sendable () -> String
 
     public init(
@@ -233,7 +234,8 @@ public struct DirectAIChatTransport: AIChatTransport {
                     let snapshots = AIUIMessageStreamReducer.snapshots(
                         from: filteredLanguageStream(languageStream),
                         messageID: request.responseMessageID ?? generateMessageID(),
-                        originalMessage: originalMessage
+                        originalMessage: originalMessage,
+                        errorOptions: errorOptions
                     )
                     for try await snapshot in snapshots { continuation.yield(snapshot) }
                     continuation.finish()
