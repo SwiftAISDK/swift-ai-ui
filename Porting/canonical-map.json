@@ -237,6 +237,7 @@
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/AgentUIStreamTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiConvertToModelMessagesUpstreamTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiUIMessageStreamUpstreamTests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiUIParity20261116Tests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiValidateUIMessagesUpstreamTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/FixtureDownloadTransport.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/TestSupport.swift",
@@ -244,6 +245,7 @@
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261108UISteeringTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261114QueueTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261114ValidationAndErrorTests.swift",
+      "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261115ValidationTests.swift",
       "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift"
     ],
     "resources": []
@@ -252,6 +254,10 @@
     {
       "kind": "native-adaptation",
       "reason": "Preserve Swift async/await, Sendable, Foundation transport and existing documented gaps; see Docs/CoreV6Parity.md and PortingStatus.md."
+    },
+    {
+      "kind": "native-adaptation",
+      "reason": "2026-11-15: reviewed ai 7.0.172 -> 7.0.173 with integrity-verified archives and exact matching-release tests. Source, declarations, changed scenarios and explicit remaining gaps are recorded in Docs/WeeklyUpstreamAudit20261115.json; no full-package or paid/live-service parity claim."
     }
   ],
   "reviewNote": "2026-11-08: exact release-matched published source, declarations and changed tests reviewed for assigned packages. Native delta and test dispositions: Docs/WeeklyUpstreamAudit20261108.json. Existing broader product gaps remain; module ownership is exact and delta review is not full-package parity. 2026-11-14: native message queue, bounded first-invalid/finite-metadata validation and explicit tool error presentation; exact react and ai UI dispositions in WeeklyUpstreamAudit20261114."

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "package": "swift-ai-ui",
-  "version": "1.2.0",
-  "releaseID": "weekly-upstream-20261114",
+  "version": "1.3.0",
+  "releaseID": "upstream-parity-20261116",
   "source": {
-    "commit": "07fbf86b82d83d9724bd03622e9e87e74395286f",
-    "baseCommit": "07fbf86b82d83d9724bd03622e9e87e74395286f",
+    "commit": "1c457dea36be42376a6853aecd5c48ffc4942178",
+    "baseCommit": "1c457dea36be42376a6853aecd5c48ffc4942178",
     "workingTree": false,
-    "inputsSHA256": "63e472c0fe891cb7636d225e1c6467e4761dc3721be68081f2afa9f0b656bb29"
+    "inputsSHA256": "d7b8f52add7828d7e9ed20418fe072e7db03e75483a168bb7f5c34e9d2a04a13"
   },
   "dependencies": [
     {
@@ -17,22 +17,22 @@
   ],
   "changes": [
     {
-      "id": "weekly-upstream-20261114",
-      "notes": "Add opt-in observable chat message queues with per-message options, cancellation, prioritization, approval ordering and history resets. UI validation stops at the first invalid element and rejects nonfinite provider/tool metadata with bounded errors. Tool errors preserve model history by default, with explicit presentation redaction and later-reasoning warnings; provider-executed errors retain their codes. Reviewed npm delta: ai 7.0.165 to 7.0.172, @ai-sdk/react 4.0.169 to 4.0.176. Validation: `node Scripts/test-packages.mjs` passed all 52 owning suites and 1731 facade tests; tooling 27/27, generation/isolation checks, standalone exports and 106 minimum/latest consumers, documentation check and 101-page build passed. Publication requires green exact-source Swift 6.3.3 CI. Paid/live verification and full-package parity are not claimed.",
-      "compatibility": "Additive native APIs or capabilities under the project minor-release convention. npm baselines and Swift SemVer are independent; this reviewed delta does not establish full-package or live-service parity."
+      "id": "upstream-parity-20261116",
+      "notes": "`convertToModelMessages` keeps empty-text reasoning that carries provider metadata, converts assistant reasoning-file parts and inlines non-image `data:` URL files instead of throwing.",
+      "compatibility": "Source-compatible; changes are additive. Request bodies, results, warnings and errors change to match the reviewed upstream package."
     }
   ],
   "canonicalDirectory": "Packages/swift-ai-ui",
   "upstream": [
     {
       "name": "ai",
-      "reviewedVersion": "7.0.172",
+      "reviewedVersion": "7.0.173",
       "ledgerKind": "core",
-      "evidence": "Docs/CoreV6Parity.md; 2026-11-01 delta: Docs/WeeklyUpstreamAudit20261101.json; 2026-11-08 delta: Docs/WeeklyUpstreamAudit20261108.json; 2026-11-14 delta: Docs/WeeklyUpstreamAudit20261114.json",
+      "evidence": "Docs/CoreV6Parity.md; 2026-11-01 delta: Docs/Archive/WeeklyUpstreamAudit20261101.json; 2026-11-08 delta: Docs/Archive/WeeklyUpstreamAudit20261108.json; 2026-11-14 delta: Docs/Archive/WeeklyUpstreamAudit20261114.json; 2026-11-15 delta: Docs/Archive/WeeklyUpstreamAudit20261115.json",
       "reviewStatus": "imported-reviewed-with-gaps",
-      "archiveIntegrity": "sha512-FDY7I0I/BE6mqa+hoeWwECO5fbnpXl9vYdvm7n5pNjru1mjrBhX1ZQrYOZOtYledTp0c0vCP/eGYPD5P3bLl3Q==",
-      "sourceRef": "npm:ai@7.0.172",
-      "testRef": "8bc7652cdb13fc84722666eb93f45acd0d131eee",
+      "archiveIntegrity": "sha512-dLea37zT1h7cjkUsBprU4Rq35HJqhtHHaq1jTAXjHQoyfpeswpgCrhjZJWdWc10gjEAxmz114py7iLGQ3xIMxw==",
+      "sourceRef": "npm:ai@7.0.173",
+      "testRef": "0e8e0543aeda7d4dd4ce6eade0d5b7d5a43644c1",
       "testRefRelationship": "matching-release",
       "contractFamilies": [
         "DecisionMockModelV4",
@@ -77,22 +77,22 @@
         "VideoModelV3",
         "VideoModelV4"
       ],
-      "contractReview": "2026-11-14: verified published source/declarations and exact matching-release changed tests reviewed separately; native ports, per-file dispositions and retained gaps are recorded in Docs/WeeklyUpstreamAudit20261114.json. Delta review is not full-package or live-service parity."
+      "contractReview": "2026-11-15: published source/declarations and exact matching-release tests reviewed separately. Native delta scenarios, per-file dispositions, unchanged-catalog evidence and explicit remaining gaps are recorded in Docs/Archive/WeeklyUpstreamAudit20261115.json. Required checks remain a separate gate; no full-package/live-service parity claim."
     },
     {
       "name": "@ai-sdk/react",
-      "reviewedVersion": "4.0.176",
+      "reviewedVersion": "4.0.177",
       "ledgerKind": "core",
-      "evidence": "Docs/CoreV6Parity.md; 2026-11-01 delta: Docs/WeeklyUpstreamAudit20261101.json; 2026-11-08 delta: Docs/WeeklyUpstreamAudit20261108.json; 2026-11-14 delta: Docs/WeeklyUpstreamAudit20261114.json",
+      "evidence": "Docs/CoreV6Parity.md; 2026-11-01 delta: Docs/Archive/WeeklyUpstreamAudit20261101.json; 2026-11-08 delta: Docs/Archive/WeeklyUpstreamAudit20261108.json; 2026-11-14 delta: Docs/Archive/WeeklyUpstreamAudit20261114.json; 2026-11-15 delta: Docs/Archive/WeeklyUpstreamAudit20261115.json",
       "reviewStatus": "imported-reviewed-with-gaps",
-      "archiveIntegrity": "sha512-pqGoKP2WZhqPloM3tO/zMFTuLlfTab3DDKoneMXsT+BIl05RuopVN5OsgUQYCLH7SoQ/tlTS7oE464JB39hscg==",
-      "sourceRef": "npm:@ai-sdk/react@4.0.176",
-      "testRef": "8bc7652cdb13fc84722666eb93f45acd0d131eee",
+      "archiveIntegrity": "sha512-Y59P/Jbd+KFeBZ9I02ea9DC8agDuNejwCrOk2ZdLrihYp3ORztiLw07UK0h4qAhDqdE3Vsy1HkgibgYnLwXiug==",
+      "sourceRef": "npm:@ai-sdk/react@4.0.177",
+      "testRef": "0e8e0543aeda7d4dd4ce6eade0d5b7d5a43644c1",
       "testRefRelationship": "matching-release",
       "contractFamilies": [
         "Swift native API equivalents"
       ],
-      "contractReview": "2026-11-14: verified published source/declarations and exact matching-release changed tests reviewed separately; native ports, per-file dispositions and retained gaps are recorded in Docs/WeeklyUpstreamAudit20261114.json. Delta review is not full-package or live-service parity."
+      "contractReview": "2026-11-15: published source/declarations and exact matching-release tests reviewed separately. Native delta scenarios, per-file dispositions, unchanged-catalog evidence and explicit remaining gaps are recorded in Docs/Archive/WeeklyUpstreamAudit20261115.json. Required checks remain a separate gate; no full-package/live-service parity claim."
     }
   ],
   "note": "Independent port. Imported test refs and contract review gaps retain their original status; export is not new upstream parity proof.",
@@ -111,11 +111,11 @@
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/Porting/map.json",
-      "sha256": "2c236b958e7a4360d1fdfc12cd733de57dc983f6242caebea1fe089e85b8b0bb"
+      "sha256": "0654b3e8f0bd2a5608a3485f6125f9087b5e2b04563847e0de79afe1e2ab22e7"
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/README.md",
-      "sha256": "102f7df14dec15e3aaa5b2ceaaac9c3386ccb177156b5b1182110944930dd091"
+      "sha256": "23cd7e332cffd79bf1019a07047d3a7f523e61b8ef691a2985c9b49d10fcc00b"
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIAgent.swift",
@@ -131,7 +131,7 @@
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageConversion.swift",
-      "sha256": "4504eb87433fac5e15484a4da837dfd39f162f308130bcbcb7757d48ac53f771"
+      "sha256": "2173fa308b73cd7e32cb5c4c0619a0f040e6633663d67d54b9f67df180121a4a"
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/Sources/SwiftAIUI/AIUIMessageErrorOptions.swift",
@@ -170,6 +170,10 @@
       "sha256": "22ca5e17c02409d8241d73cf6ba0a986a036e6b067945418578e84289593e4b8"
     },
     {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiUIParity20261116Tests.swift",
+      "sha256": "60e6fd7a3031f2f5fd0c22a6a49bce059949039dddf2b7411474908aef21c8c1"
+    },
+    {
       "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/AiValidateUIMessagesUpstreamTests.swift",
       "sha256": "df64baa4c3e013b85c75bc745cd8570e48cf0233e40bf61580cb619ccd880337"
     },
@@ -196,6 +200,10 @@
     {
       "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261114ValidationAndErrorTests.swift",
       "sha256": "16723550dbedb2728a1c7fe291c8b59875bb08dc96ce96687089ada4acb6e55c"
+    },
+    {
+      "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/Weekly20261115ValidationTests.swift",
+      "sha256": "dd28168b93c6fb4dd4a16f99c93341edf0d88eb6cd5250d6039f6835735c9d54"
     },
     {
       "canonicalPath": "Packages/swift-ai-ui/Tests/SwiftAIUITests/WeeklyUI20261011Tests.swift",

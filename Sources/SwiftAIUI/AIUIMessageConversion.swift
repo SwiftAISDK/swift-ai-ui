@@ -144,9 +144,9 @@ private func convertToModelMessage(
                 content.append(.text(text.text, providerMetadata: text.providerMetadata))
             }
         case let .reasoning(reasoning):
-            if !reasoning.text.isEmpty {
-                content.append(.reasoning(reasoning.text, providerMetadata: reasoning.providerMetadata))
-            }
+            // Upstream keeps every reasoning part, including empty redacted or
+            // encrypted reasoning whose replay data lives in provider metadata.
+            content.append(.reasoning(reasoning.text, providerMetadata: reasoning.providerMetadata))
         case let .file(file):
             try appendModelFile(file, path: partPath, content: &content)
         case let .toolCall(call):
@@ -175,7 +175,12 @@ private func convertToModelMessage(
             content.append(.custom(value, providerMetadata: providerMetadata))
         case let .data(data):
             if let part = try convertDataPart?(data) { content.append(part) }
-        case .steeringMessage, .source, .reasoningFile, .metadata, .error, .raw:
+        case let .reasoningFile(file):
+            // Upstream replays reasoning files only inside assistant content.
+            if message.role == .assistant {
+                content.append(.reasoningFile(file))
+            }
+        case .steeringMessage, .source, .metadata, .error, .raw:
             break
         }
     }
@@ -285,6 +290,17 @@ private func appendModelFile(
         return
     }
 
+    // Upstream keeps data URLs as file parts and inlines them during prompt conversion.
+    if let url = file.url, let data = decodedDataURL(url) {
+        content.append(.file(
+            mimeType: file.mediaType,
+            data: data,
+            filename: file.filename,
+            providerMetadata: file.providerMetadata
+        ))
+        return
+    }
+
     if file.url != nil {
         throw unsupportedModelConversionPart(
             path: "\(path).file",
@@ -296,6 +312,21 @@ private func appendModelFile(
         path: "\(path).file",
         message: "file parts need inline data or an image URL to be converted to model messages."
     )
+}
+
+/// Decodes an RFC 2397 `data:` URL payload; returns nil for other URLs or malformed data.
+private func decodedDataURL(_ url: String) -> Data? {
+    guard url.count >= 5, url.prefix(5).lowercased() == "data:",
+          let commaIndex = url.firstIndex(of: ",") else {
+        return nil
+    }
+    let header = url[url.index(url.startIndex, offsetBy: 5)..<commaIndex]
+    let payload = String(url[url.index(after: commaIndex)...])
+    let isBase64 = header.split(separator: ";").contains { $0.lowercased() == "base64" }
+    if isBase64 {
+        return Data(base64Encoded: payload.removingPercentEncoding ?? payload, options: .ignoreUnknownCharacters)
+    }
+    return payload.removingPercentEncoding.map { Data($0.utf8) }
 }
 
 private func unsupportedModelConversionPart(path: String, message: String) -> AIUIMessageStreamError {
