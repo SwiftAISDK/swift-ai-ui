@@ -56,6 +56,35 @@ struct Weekly20261115ValidationTests {
         #expect(try validateUIMessages(messages) == messages)
     }
 
+    // ai@7.0.179 validates deep provider, citation and tool metadata in place.
+    @Test func preservesDeepJSONValuesInTextToolAndCitationMetadata() throws {
+        let node = (0..<100).reduce(JSONValue.array([JSONValue]())) { value, _ in .array([value]) }
+        let nested = JSONValue.array(Array(repeating: node, count: 20))
+        let metadata: [String: JSONValue] = ["provider": ["key": nested]]
+        let citation = AICitation(source: .init(id: "source-1", sourceType: "url", url: "https://example.com",
+            providerMetadata: metadata))
+        var call = AIToolCall(id: "1", name: "foo", arguments: "{}", providerMetadata: metadata)
+        call.toolMetadata = ["key": nested]
+        let messages: [AIUIMessage] = [.assistant(id: "1", parts: [
+            .text(.init(text: "Hello", providerMetadata: metadata, citations: [citation])),
+            .toolCall(call),
+            .toolResult(.init(toolCallID: "1", toolName: "foo", result: "result", providerMetadata: metadata))
+        ])]
+        #expect(try validateUIMessages(messages) == messages)
+    }
+
+    @Test func rejectsNonFiniteValuesInCitationMetadataAtTheFirstPath() {
+        let citation = AICitation(source: .init(id: "source-1", sourceType: "url", url: "https://example.com",
+            providerMetadata: ["provider": ["key": [JSONValue.number(.infinity), .number(.infinity)]]]))
+        let messages: [AIUIMessage] = [.assistant(id: "1", parts: [.text(.init(text: "Hello", citations: [citation]))])]
+        let result = safeValidateUIMessages(messages)
+        #expect(!result.isValid)
+        #expect(result.issues == [.init(
+            path: "messages[0].parts[0].text.citations[0].source.providerMetadata.provider.key[0]",
+            message: "Invalid JSON value. Expected a finite number."
+        )])
+    }
+
     @Test(arguments: ["text", "static tool", "dynamic tool"])
     func malformedNativeJSONMetadataHasBoundedSingleFailure(_ kind: String) {
         // Native provider metadata intentionally accepts arbitrary JSON values;
@@ -85,19 +114,49 @@ struct Weekly20261115ValidationTests {
         } catch { Issue.record("Expected native UI validation error, got \(error)") }
         #expect(model.streamCalls == 0)
     }
+
+    @Test func nestedDeniedToolMetadataReachesTheAgentModel() async throws {
+        let node = (0..<100).reduce(JSONValue.array([])) { value, _ in .array([value]) }
+        let nested = JSONValue.array(Array(repeating: node, count: 20))
+        let call = AIToolCall(id: "call-1", name: "x", arguments: "{}", providerMetadata: ["p": ["value": nested]])
+        let approval = AIToolApprovalRequest(id: "approval-1", toolName: "x", arguments: "{}", toolCallID: call.id)
+        let denied = AIToolResult(toolCallID: call.id, toolName: call.name, result: "Tool call execution denied.",
+            isError: true, providerMetadata: call.providerMetadata)
+        let model = WeeklyValidationModel()
+        let stream = try createAgentUIStream(agent: AIToolLoopAgent(model: model), uiMessages: [
+            .assistant(id: "m1", parts: [.toolCall(call), .toolApprovalRequest(approval)]),
+            .init(id: "m2", role: .tool, parts: [.toolApprovalResponse(.init(id: approval.id, approved: false)), .toolResult(denied)])
+        ])
+        for try await _ in stream {}
+
+        let requests = model.streamRequests
+        try #require(requests.count == 1)
+        let calls = requests[0].messages.filter { $0.role == .assistant }.flatMap(\.content).compactMap { part -> AIToolCall? in
+            guard case let .toolCall(call) = part else { return nil }
+            return call
+        }
+        let modelCall = try #require(calls.first)
+        #expect(modelCall.id == "call-1")
+        #expect(modelCall.providerMetadata["p"]?["value"] == nested)
+    }
 }
 
 private final class WeeklyValidationModel: LanguageModel, @unchecked Sendable {
     let providerID = "test-provider", modelID = "test-model"
     private let lock = NSLock()
-    private var calls = 0
-    var streamCalls: Int { lock.lock(); defer { lock.unlock() }; return calls }
+    private var requests: [LanguageModelRequest] = []
+    var streamRequests: [LanguageModelRequest] { lock.withLock { requests } }
+    var streamCalls: Int { streamRequests.count }
     func generate(_ request: LanguageModelRequest) async throws -> TextGenerationResult {
         Issue.record("Invalid UI history must not invoke model generation")
         return .init(text: "", rawValue: [:])
     }
     func stream(_ request: LanguageModelRequest) -> AsyncThrowingStream<LanguageStreamPart, Error> {
-        lock.lock(); calls += 1; lock.unlock()
-        return AsyncThrowingStream { $0.finish() }
+        lock.withLock { requests.append(request) }
+        return AsyncThrowingStream { continuation in
+            continuation.yield(.streamStart(warnings: []))
+            continuation.yield(.finishMetadata(reason: "stop", usage: .init(inputTokens: 1, outputTokens: 1)))
+            continuation.finish()
+        }
     }
 }

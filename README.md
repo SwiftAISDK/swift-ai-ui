@@ -1,5 +1,5 @@
 <!-- Generated distribution; edit the canonical repository. -->
-# swift-ai-ui 1.3.0
+# swift-ai-ui 1.3.1
 
 Independent Swift-native port of Vercel AI SDK. Source and upstream dispositions are in PROVENANCE.json and Porting/.
 
@@ -8,7 +8,7 @@ Independent Swift-native port of Vercel AI SDK. Source and upstream dispositions
 Add this package to your SwiftPM dependencies:
 
 ```swift
-.package(url: "https://github.com/SwiftAISDK/swift-ai-ui.git", from: "1.3.0")
+.package(url: "https://github.com/SwiftAISDK/swift-ai-ui.git", from: "1.3.1")
 ```
 
 Products: `SwiftAIUI`.

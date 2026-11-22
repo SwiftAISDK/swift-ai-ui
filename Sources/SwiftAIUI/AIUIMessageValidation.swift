@@ -489,6 +489,9 @@ private func firstUIJSONIssue(_ part: AIUIMessagePart, path: String) -> AIUIMess
         }
     case let .text(value):
         values.append(("\(path).text.providerMetadata", .object(value.providerMetadata)))
+        for (index, citation) in value.citations.enumerated() {
+            values.append(("\(path).text.citations[\(index)].source.providerMetadata", .object(citation.source.providerMetadata)))
+        }
     case let .reasoning(value): values.append(("\(path).reasoning.providerMetadata", .object(value.providerMetadata)))
     case let .source(value): values.append(("\(path).source.providerMetadata", .object(value.providerMetadata)))
     case let .file(value), let .reasoningFile(value): values.append(("\(path).file.providerMetadata", .object(value.providerMetadata)))

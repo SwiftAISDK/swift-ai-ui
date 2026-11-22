@@ -33,4 +33,30 @@ struct Weekly20261108UISteeringTests {
         #expect(converted.first?.content == [.text("", providerMetadata: ["anthropic": ["signature": "kept"]])])
     }
 
+    @Test func interruptedTextAndReasoningStayAsEmptyCompletedParts() async throws {
+        let correction = "Use Paris, Texas instead."
+        let answer = "It is sunny in Paris, Texas."
+        let parts: [LanguageStreamPart] = [
+            .streamStart(warnings: []),
+            .reasoningStart(id: "0"), .textStart(id: "1"),
+            .textEnd(id: "1"), .reasoningEnd(id: "0"),
+            .steeringMessage(id: "steer-1", message: .user(correction), stepNumber: 0),
+            .textStart(id: "2"), .textDeltaPart(id: "2", delta: answer), .textEnd(id: "2"),
+            .finishMetadata(reason: "stop", usage: .init(outputTokens: 10))
+        ]
+        let stream = AsyncThrowingStream { continuation in
+            for part in parts { continuation.yield(part) }
+            continuation.finish()
+        }
+        var final: AIUIMessage?
+        for try await snapshot in AIUIMessageStreamReducer.snapshots(from: stream, messageID: "assistant") {
+            final = snapshot
+        }
+        #expect(final?.parts == [
+            .reasoning(.init(id: "0", text: "", state: .done)),
+            .text(.init(id: "1", text: "", state: .done)),
+            .steeringMessage(.init(id: "steer-1", content: [.text(correction)])),
+            .text(.init(id: "2", text: answer, state: .done))
+        ])
+    }
 }
